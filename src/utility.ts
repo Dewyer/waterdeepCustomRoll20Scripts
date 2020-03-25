@@ -1,6 +1,6 @@
 import { Command } from "./models";
 
-var capturedLastRollTotal = 0; 
+var capturedLastRollTotal = 0;
 
 export function handleUtilityCommands(msg:ChatEventData)
 {
@@ -14,15 +14,48 @@ export function handleUtilityCommands(msg:ChatEventData)
         {
             doCrCommand(cmd);
         }
-    
+
         if (cmd.command === "!kicsigyogy")
         {
             doLesserHealing(cmd);
-        }
+		}
+		if (cmd.command === "!cs")
+		{
+			doCsCommand(cmd);
+		}
     }
     tryCaptureRollResult(msg);
 
 };
+
+function doCsCommand(cmd:Command)
+{
+	let charName = cmd.args[0];
+	let toEdit = cmd.args[1];
+	let to = 0;
+	let charId = getCharacterIdFromName(charName);
+	if (!charId)
+		return;
+	let charAtr = getCharacterAttribute(charId,toEdit);
+	if (!charAtr)
+		return;
+
+	if (cmd.args.length > 2)
+	{
+		if (cmd.args[2] === "roll")
+		{
+			log("roll by : " + capturedLastRollTotal);
+			to = capturedLastRollTotal;
+		}
+		else if (cmd.args[2] === "max")
+		{
+			log("set to to max");
+			to = parseInt(charAtr.get("max"));
+		}
+		else { to = parseInt(cmd.args[2]); }
+	}
+	(charAtr as any).set("current",to);
+}
 
 function tryCaptureRollResult(msg)
 {
@@ -128,14 +161,14 @@ export function getCharacterAttribute(charId:string,attribute:string) : Attribut
 function changeCharacterAttributeBy(charId,atribStr,by)
 {
     let atrib = getCharacterAttribute(charId,atribStr);
-    if (atrib)
+    if (atrib !== undefined)
     {
         try{
             //log(atrib);
             let mx = parseInt(atrib.get("max"));
             let cur = parseInt(atrib.get("current"))
-            let newVal = min(cur + by, mx);
-            atrib.set("current", newVal+"");
+            let newVal = Math.min(cur + by, mx);
+			(atrib as any).set("current", newVal+"");
         }
         catch (ex)
         {
@@ -144,7 +177,7 @@ function changeCharacterAttributeBy(charId,atribStr,by)
     }
 }
 
-function getCharacterIdFromName(name)
+export function getCharacterIdFromName(name) : string | undefined
 {
     let chars = filterObjs((obj:Character) => obj.get("_type") === "character" && obj.get("name") === name) as Character[];
     if (chars.length > 0)

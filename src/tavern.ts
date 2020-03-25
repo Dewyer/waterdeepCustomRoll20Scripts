@@ -1,6 +1,6 @@
-import {getMessageCommand} from "./utility";
+import {getMessageCommand, getCharacterAttribute, getCharacterIdFromName} from "./utility";
 import { DefaultTavernState } from "./assets";
-import { TavernState } from "./models";
+import { TavernState, Command } from "./models";
 
 const TAVERN_NAME = "Egészséges Kecske Kocsma";
 
@@ -36,21 +36,63 @@ export function handleTavernCommands(msg:ChatEventData)
     }
 }
 
-function handleBuyingStock(cmd)
+function handleBuyingStock(cmd:Command)
 {
     if (cmd.args.length >= 3)
     {
         let who = cmd.args[0]
         let what = cmd.args[1];
-        let howMuch = parseInt(cmd.args[2]);
-        let oldState = getTavernState();
+		let howMuch = parseInt(cmd.args[2]);
+		let playerMoney = getPlayerMoneyAttrib(who);
+		let oldState = getTavernState();
+		let buyDef = oldState.defs[what];
+		let totalCostOfPurchase = buyDef.buyPrice.price * howMuch;
+		let playerMoneyNumber = parseInt(playerMoney.get("current"));
 
-        if (oldState.inv[what])
+		if (oldState.inv[what] !== undefined)
         {
-            let buy = oldState.defs[what];
-            sendChat(TAVERN_NAME,"asd")
-        }
-    }
+			if (canPlayerAffordItem(totalCostOfPurchase,playerMoney))
+			{
+				(playerMoney as any).set("current", playerMoneyNumber-totalCostOfPurchase+"");
+				addStock(what,buyDef.buyPrice.for*howMuch);
+				sendChat(TAVERN_NAME,`&{template:default} {{name=Kocsma}} {{Megvéve=${what}}} {{Hány hordó=${howMuch} hordó}} {{Hány kiszerelés=${howMuch*buyDef.buyPrice.for} kiszerelés}} {{Mennyibe került=${totalCostOfPurchase} gp}}`);
+			}
+			else
+			{
+				sendChat(TAVERN_NAME,`Nincs elég pénzed ezt megvenni :'( Ennyi pénzed van: ${playerMoneyNumber} gp, ennyibe került volna: ${totalCostOfPurchase} gp`)
+			}
+		}
+		else
+		{
+			sendChat(TAVERN_NAME,"Ilyen ital nem létezik!")
+		}
+	}
+}
+
+function addStock(what:string,much:number)
+{
+	let tavernState = getTavernState();
+	let newState = Object.assign({},tavernState);
+	if (newState[what] === undefined){
+		newState[what] = much;
+	}
+	else{
+		newState.inv[what] += much;
+	}
+	setTavernState(newState);
+}
+
+function canPlayerAffordItem(cost:number , playerMoney:Attribute) : boolean
+{
+	return parseInt(playerMoney.get("current")) >= cost;
+}
+
+function getPlayerMoneyAttrib(playerName:string) : Attribute
+{
+	let charId = getCharacterIdFromName(playerName);
+	let atrib = getCharacterAttribute(charId,"gp");
+	log(atrib);
+	return atrib;
 }
 
 function setDolgozok(cmd)
@@ -77,9 +119,9 @@ function displayInventory()
     let items = [];
     for (let kk in state.inv)
     {
-        items.push(`{{${kk}=${state.inv[kk]}}}`);
+        items.push(`{{${kk}=${state.inv[kk]} kiszerelés}}`);
     }
-    let body = `&{template:simple} {{name=Kocsma}} ${items.join(" ")}`
+	let body = `&{template:default} {{name=Kocsma}} ${items.join(" ")}`
 
     sendChat(TAVERN_NAME,body);
 }
@@ -94,18 +136,17 @@ function getStateAtrib() : Attribute
 
 }
 
-function getTavernState()
+function getTavernState() : TavernState
 {
     let atrib = getStateAtrib();
-    log(atrib);
     let ss = atrib.get("current");
     if (ss !== undefined){
-        return JSON.parse(ss);
+        return JSON.parse(ss) as TavernState;
     }
-    return {};
+    return DefaultTavernState;
 }
 
-function setTavernState(news)
+function setTavernState(news:TavernState)
 {
     let atrib:any = getStateAtrib();
     atrib.set("current",JSON.stringify(news));

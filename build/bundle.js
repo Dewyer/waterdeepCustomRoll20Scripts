@@ -38,8 +38,6 @@ module.exports =
 /******/ 		// Load entry module and return exports
 /******/ 		return __webpack_require__(325);
 /******/ 	};
-/******/ 	// initialize runtime
-/******/ 	runtime(__webpack_require__);
 /******/
 /******/ 	// run startup
 /******/ 	return startup();
@@ -47,15 +45,82 @@ module.exports =
 /************************************************************************/
 /******/ ({
 
+/***/ 59:
+/***/ (function(__unusedmodule, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+const assets_1 = __webpack_require__(363);
+function handleCustomFx(msg) {
+    if ((msg.rolltemplate === "dmg") && msg.inlinerolls) {
+        log("will do fx");
+        //we need an fx
+        let token = getSenderToken(msg);
+        if (token) {
+            let description = msg.content.split("{{desc=")[1].split("}}")[0];
+            if (description.includes("#")) {
+                let effect = description.split("#")[1].toLowerCase();
+                log(effect);
+                let x = token.get("left");
+                let y = token.get("top");
+                if (assets_1.CustomEffects.hasOwnProperty(effect)) {
+                    log("custom effect");
+                    log(assets_1.CustomEffects[effect]);
+                    log(x);
+                    log(y);
+                    spawnFxWithDefinition(x, y, assets_1.CustomEffects[effect]);
+                }
+                else {
+                    //spawnFx(token.left+(token.width/2),token.top+(token.height/2),effect);
+                    log("Rolling normal effect");
+                    spawnFx(x, y, effect);
+                }
+            }
+        }
+    }
+}
+exports.handleCustomFx = handleCustomFx;
+function getCharacterIdFromName(name) {
+    let chars = filterObjs((obj) => obj.get("_type") === "character" && obj.get("name") === name);
+    if (chars.length > 0) {
+        return chars[0].get("_id");
+    }
+    else {
+        return undefined;
+    }
+}
+function getSenderToken(msg) {
+    let playerPageId = Campaign().get('playerpageid');
+    let representerName = msg.content.split("charname=")[1].trim();
+    let representerId = getCharacterIdFromName(representerName);
+    let playerTokens = filterObjs((obj) => {
+        if (obj.get("_type") === "graphic" && obj.get("_subtype") === "token" && obj.get("_pageid") === playerPageId) {
+            //all tokens on this page
+            if (obj.get("represents") === representerId) {
+                return true;
+            }
+        }
+        return false;
+    });
+    if (playerTokens.length > 0) {
+        return playerTokens[0];
+    }
+    return undefined;
+}
+
+
+/***/ }),
+
 /***/ 325:
 /***/ (function(__unusedmodule, exports, __webpack_require__) {
 
 "use strict";
 
 Object.defineProperty(exports, "__esModule", { value: true });
-const rollfx = __webpack_require__(578);
+const rollfx = __webpack_require__(59);
 const tavern = __webpack_require__(663);
-const utility = __webpack_require__(783);
+const utility = __webpack_require__(566);
 //Message handler
 on("chat:message", function (msg) {
     tavern.handleTavernCommands(msg);
@@ -66,13 +131,13 @@ on("chat:message", function (msg) {
 
 /***/ }),
 
-/***/ 578:
-/***/ (function(__unusedmodule, __webpack_exports__, __webpack_require__) {
+/***/ 363:
+/***/ (function(__unusedmodule, exports) {
 
 "use strict";
-__webpack_require__.r(__webpack_exports__);
-/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "handleCustomFx", function() { return handleCustomFx; });
-var CustomEffects = {
+
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.CustomEffects = {
     "thunderwave": {
         maxParticles: 1000,
         size: 5,
@@ -82,7 +147,7 @@ var CustomEffects = {
         emissionRate: 20000,
         speed: 4,
         speedRandom: 0,
-        gravity: {x:0.01, y:0.01},
+        gravity: { x: 0.01, y: 0.01 },
         angle: 90.0,
         angleRandom: 360,
         startColour: [90, 90, 175, 1],
@@ -116,7 +181,7 @@ var CustomEffects = {
         emissionRate: 2,
         speed: 0,
         speedRandom: 0,
-        gravity: {x:0.0001, y:0.0001},
+        gravity: { x: 0.0001, y: 0.0001 },
         angle: 0.0,
         angleRandom: 360,
         startColour: [10, 10, 50, 0],
@@ -127,81 +192,201 @@ var CustomEffects = {
         sharpnessRandom: 40
     }
 };
+exports.DefaultTavernState = {
+    reputation: 0,
+    innkeeperModifier: 0,
+    serverModifier: 0,
+    guardModifier: 0,
+    inv: {
+        "root-beer": 0,
+        "shadow-ale": 0,
+        "basic-wine": 0,
+        "good-wine": 0
+    },
+    defs: {
+        "root-beer": {
+            chance: 0.20,
+            sellPrice: 3,
+            buyPrice: { price: 632, for: 316 }
+        },
+        "shadow-ale": {
+            chance: 0.30,
+            sellPrice: 2,
+            buyPrice: { price: 316, for: 316 }
+        },
+        "basic-wine": {
+            chance: 0.40,
+            sellPrice: 2,
+            buyPrice: { price: 90, for: 100 }
+        },
+        "good-wine": {
+            chance: 0.1,
+            sellPrice: 4,
+            buyPrice: { price: 180, for: 100 }
+        }
+    }
+};
 
 
-function handleCustomFx(msg)
-{
-    if ((msg.rolltemplate === "dmg") && msg.inlinerolls)
-    {
-        log("will do fx")
-        //we need an fx
-        let token = getSenderToken(msg);
-        if (token)
-        {
-            let description = msg.content.split("{{desc=")[1].split("}}")[0];
-            if (description.includes("#"))
-            {
-                let effect = description.split("#")[1].toLowerCase()
-                log(effect);
-                let x = token.get("left");
-                let y = token.get("top");
-                if (CustomEffects.hasOwnProperty(effect))
-                {
-                    log("custom effect");
-                    log(CustomEffects[effect]);
-                    log(x);
-                    log(y);
-                    spawnFxWithDefinition(x, y, CustomEffects[effect])
-                }
-                else
-                {
-                    //spawnFx(token.left+(token.width/2),token.top+(token.height/2),effect);
-                    log("Rolling normal effect")
-                    spawnFx(x, y, effect);
+/***/ }),
+
+/***/ 566:
+/***/ (function(__unusedmodule, exports) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+var capturedLastRollTotal = 0;
+function handleUtilityCommands(msg) {
+    //log(msg);
+    if (msg.content.startsWith("!")) {
+        let cmd = getMessageCommand(msg.content);
+        //log(cmd);
+        if (cmd.command === "!cr") {
+            doCrCommand(cmd);
+        }
+        if (cmd.command === "!kicsigyogy") {
+            doLesserHealing(cmd);
+        }
+        if (cmd.command === "!cs") {
+            doCsCommand(cmd);
+        }
+    }
+    tryCaptureRollResult(msg);
+}
+exports.handleUtilityCommands = handleUtilityCommands;
+;
+function doCsCommand(cmd) {
+    let charName = cmd.args[0];
+    let toEdit = cmd.args[1];
+    let to = 0;
+    let charId = getCharacterIdFromName(charName);
+    if (!charId)
+        return;
+    let charAtr = getCharacterAttribute(charId, toEdit);
+    if (!charAtr)
+        return;
+    if (cmd.args.length > 2) {
+        if (cmd.args[2] === "roll") {
+            log("roll by : " + capturedLastRollTotal);
+            to = capturedLastRollTotal;
+        }
+        else if (cmd.args[2] === "max") {
+            log("set to to max");
+            to = parseInt(charAtr.get("max"));
+        }
+        else {
+            to = parseInt(cmd.args[2]);
+        }
+    }
+    charAtr.set("current", to);
+}
+function tryCaptureRollResult(msg) {
+    if (msg.inlinerolls !== undefined) {
+        if (msg.inlinerolls.length > 1) {
+            let last = msg.inlinerolls[msg.inlinerolls.length - 1];
+            if (last.results) {
+                let total = last.results.total;
+                if (total !== undefined) {
+                    capturedLastRollTotal = total;
+                    log("new captured result :" + capturedLastRollTotal);
                 }
             }
         }
     }
 }
-
-function getCharacterIdFromName(name)
-{
-    let chars = filterObjs((obj)=>obj.get("_type") === "character" && obj.get("name") === name);
-    if (chars.length >0)
-    {
-        return chars[0].get("_id");
-    }
-    else
-    {
-        return undefined;
-    }
+function doLesserHealing(cmd) {
+    let charName = cmd.args[0];
+    let charId = getCharacterIdFromName(charName);
+    let hp = randomInteger(4) + randomInteger(4) + 4;
+    let ct = "Megiszik egy kicsi gyógyitalt és visszatölt 2d4+4 életerőt ami [[" + hp + "]].";
+    sendChat("character|" + charId, "/me " + ct);
+    changeCharacterAttributeBy(charId, "hp", hp);
 }
-
-function getSenderToken(msg)
-{
-    let playerPageId = Campaign().get('playerpageid');
-    let representerName = msg.content.split("charname=")[1].trim();
-    let representerId = getCharacterIdFromName(representerName);
-
-    let playerTokens = filterObjs((obj) => 
-    {
-        if (obj.get("_type") === "graphic" && obj.get("_subtype") === "token" && obj.get("_pageid") === playerPageId)
-        {
-            //all tokens on this page
-            if (obj.get("represents") === representerId)
-            {
-                return true;
-            }
-        } 
-        return false;
-    });
-    
-    if (playerTokens.length > 0)
-    {
-        return playerTokens[0];
+function getMessageCommand(content) {
+    let args = [];
+    let command = "";
+    let buffer = "";
+    let lastChar = "";
+    for (let ii = 0; ii < content.length; ii++) {
+        let atChar = content[ii];
+        if (command === "" && atChar === " ") {
+            command = buffer;
+        }
+        else if (atChar === "{") {
+            buffer = "";
+        }
+        else if (atChar === "}") {
+            args.push(buffer);
+            buffer = "";
+        }
+        else if (!(lastChar === "}" && atChar === " ")) {
+            buffer += atChar;
+        }
+        lastChar = atChar;
+    }
+    if (command === "") {
+        command = buffer;
+    }
+    return { command: command, args: args };
+}
+exports.getMessageCommand = getMessageCommand;
+function doCrCommand(cmd) {
+    let charName = cmd.args[0];
+    let toEdit = cmd.args[1];
+    let by = -1;
+    if (cmd.args.length > 2) {
+        if (cmd.args[2] === "roll") {
+            log("roll by : " + capturedLastRollTotal);
+            by = capturedLastRollTotal;
+        }
+        else {
+            by = parseInt(cmd.args[2]);
+        }
+    }
+    //log(charName);
+    //llog(toEdit);
+    let charId = getCharacterIdFromName(charName);
+    //class_resource
+    changeCharacterAttributeBy(charId, toEdit, by);
+}
+function getCharacterAttribute(charId, attribute) {
+    let atribs = filterObjs((obj) => obj.get("_type") === "attribute" && obj.get("_characterid") === charId && obj.get("name") === attribute);
+    if (atribs.length > 0) {
+        return atribs[0];
     }
     return undefined;
 }
+exports.getCharacterAttribute = getCharacterAttribute;
+function changeCharacterAttributeBy(charId, atribStr, by) {
+    let atrib = getCharacterAttribute(charId, atribStr);
+    if (atrib !== undefined) {
+        try {
+            //log(atrib);
+            let mx = parseInt(atrib.get("max"));
+            let cur = parseInt(atrib.get("current"));
+            let newVal = Math.min(cur + by, mx);
+            atrib.set("current", newVal + "");
+        }
+        catch (ex) {
+            sendChat("UtilityApi", "Coudn't change attrib value!");
+        }
+    }
+}
+function getCharacterIdFromName(name) {
+    let chars = filterObjs((obj) => obj.get("_type") === "character" && obj.get("name") === name);
+    if (chars.length > 0) {
+        return chars[0].get("_id");
+    }
+    else {
+        return undefined;
+    }
+}
+exports.getCharacterIdFromName = getCharacterIdFromName;
+function min(a, b) {
+    return a >= b ? b : a;
+}
+
 
 /***/ }),
 
@@ -211,7 +396,8 @@ function getSenderToken(msg)
 "use strict";
 
 Object.defineProperty(exports, "__esModule", { value: true });
-const utility_1 = __webpack_require__(783);
+const utility_1 = __webpack_require__(566);
+const assets_1 = __webpack_require__(363);
 const TAVERN_NAME = "Egészséges Kecske Kocsma";
 function handleTavernCommands(msg) {
     if (msg.content.startsWith("!")) {
@@ -240,12 +426,45 @@ function handleBuyingStock(cmd) {
         let who = cmd.args[0];
         let what = cmd.args[1];
         let howMuch = parseInt(cmd.args[2]);
+        let playerMoney = getPlayerMoneyAttrib(who);
         let oldState = getTavernState();
-        if (oldState.inv[what]) {
-            let buy = oldState.defs[what];
-            sendChat(TAVERN_NAME, "asd");
+        let buyDef = oldState.defs[what];
+        let totalCostOfPurchase = buyDef.buyPrice.price * howMuch;
+        let playerMoneyNumber = parseInt(playerMoney.get("current"));
+        if (oldState.inv[what] !== undefined) {
+            if (canPlayerAffordItem(totalCostOfPurchase, playerMoney)) {
+                playerMoney.set("current", playerMoneyNumber - totalCostOfPurchase + "");
+                addStock(what, buyDef.buyPrice.for * howMuch);
+                sendChat(TAVERN_NAME, `&{template:default} {{name=Kocsma}} {{Megvéve=${what}}} {{Hány hordó=${howMuch} hordó}} {{Hány kiszerelés=${howMuch * buyDef.buyPrice.for} kiszerelés}} {{Mennyibe került=${totalCostOfPurchase} gp}}`);
+            }
+            else {
+                sendChat(TAVERN_NAME, `Nincs elég pénzed ezt megvenni :'( Ennyi pénzed van: ${playerMoneyNumber} gp, ennyibe került volna: ${totalCostOfPurchase} gp`);
+            }
+        }
+        else {
+            sendChat(TAVERN_NAME, "Ilyen ital nem létezik!");
         }
     }
+}
+function addStock(what, much) {
+    let tavernState = getTavernState();
+    let newState = Object.assign({}, tavernState);
+    if (newState[what] === undefined) {
+        newState[what] = much;
+    }
+    else {
+        newState.inv[what] += much;
+    }
+    setTavernState(newState);
+}
+function canPlayerAffordItem(cost, playerMoney) {
+    return parseInt(playerMoney.get("current")) >= cost;
+}
+function getPlayerMoneyAttrib(playerName) {
+    let charId = utility_1.getCharacterIdFromName(playerName);
+    let atrib = utility_1.getCharacterAttribute(charId, "gp");
+    log(atrib);
+    return atrib;
 }
 function setDolgozok(cmd) {
     if (cmd.args.length >= 3) {
@@ -265,9 +484,9 @@ function displayInventory() {
     let state = getTavernState();
     let items = [];
     for (let kk in state.inv) {
-        items.push(`{{${kk}=${state.inv[kk]}}}`);
+        items.push(`{{${kk}=${state.inv[kk]} kiszerelés}}`);
     }
-    let body = `&{template:simple} {{name=Kocsma}} ${items.join(" ")}`;
+    let body = `&{template:default} {{name=Kocsma}} ${items.join(" ")}`;
     sendChat(TAVERN_NAME, body);
 }
 function getStateAtrib() {
@@ -278,52 +497,18 @@ function getStateAtrib() {
 }
 function getTavernState() {
     let atrib = getStateAtrib();
-    log(atrib);
     let ss = atrib.get("current");
     if (ss !== undefined) {
         return JSON.parse(ss);
     }
-    return {};
+    return assets_1.DefaultTavernState;
 }
 function setTavernState(news) {
     let atrib = getStateAtrib();
     atrib.set("current", JSON.stringify(news));
 }
 function getDefaultTavernState() {
-    return {
-        reputation: 0,
-        innkeeperModifier: 0,
-        serverModifier: 0,
-        guardModifier: 0,
-        inv: {
-            "root-beer": 0,
-            "shadow-ale": 0,
-            "basic-wine": 0,
-            "good-wine": 0
-        },
-        defs: {
-            "root-beer": {
-                chance: 0.20,
-                sellPrice: 3,
-                buyPrice: { price: 632, for: 316 }
-            },
-            "shadow-ale": {
-                chance: 0.30,
-                sellPrice: 2,
-                buyPrice: { price: 316, for: 316 }
-            },
-            "basic-wine": {
-                chance: 0.40,
-                sellPrice: 2,
-                buyPrice: { price: 90, for: 100 }
-            },
-            "good-wine": {
-                chance: 0.1,
-                sellPrice: 4,
-                buyPrice: { price: 180, for: 100 }
-            }
-        }
-    };
+    return assets_1.DefaultTavernState;
 }
 function getTavernCharacter() {
     let existingTavern = findTavernCharacter();
@@ -357,198 +542,8 @@ function findTavernCharacter() {
 }
 
 
-/***/ }),
-
-/***/ 783:
-/***/ (function(__unusedmodule, __webpack_exports__, __webpack_require__) {
-
-"use strict";
-__webpack_require__.r(__webpack_exports__);
-/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "handleUtilityCommands", function() { return handleUtilityCommands; });
-/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "getMessageCommand", function() { return getMessageCommand; });
-var capturedLastRollTotal = 0; 
-
-function handleUtilityCommands(msg)
-{
-    //log(msg);
-    if (msg.content.startsWith("!"))
-    {
-        let cmd = getMessageCommand(msg.content);
-        //log(cmd);
-
-        if (cmd.command === "!cr")
-        {
-            doCrCommand(cmd);
-        }
-    
-        if (cmd.command === "!kicsigyogy")
-        {
-            doLesserHealing(cmd);
-        }
-    }
-    tryCaptureRollResult(msg);
-
-};
-
-function tryCaptureRollResult(msg)
-{
-    if (msg.inlinerolls !== undefined)
-    {
-        if (msg.inlinerolls.length > 1)
-        {
-            let last = msg.inlinerolls[msg.inlinerolls.length-1];
-            if (last.results)
-            {
-                let total = last.results.total;
-                if (total !== undefined)
-                {
-                    capturedLastRollTotal = total;
-                    log("new captured result :"+capturedLastRollTotal);
-                }
-            }
-        }
-    }
-}
-
-function doLesserHealing(cmd)
-{
-    let charName = cmd.args[0];
-    let charId  = getCharacterIdFromName(charName);
-    let hp = randomInteger(4) + randomInteger(4)+4;
-    let ct = "Megiszik egy kicsi gyógyitalt és visszatölt 2d4+4 életerőt ami [["+hp+"]].";
-    sendChat("character|"+charId,"/me "+ct);
-    changeCharacterAttributeBy(charId,"hp",hp);
-}
-
-
-function getMessageCommand(content)
-{
-    let args = [];
-    let command = "";
-    let buffer = "";
-    let lastChar = "";
-    for (let ii = 0; ii < content.length; ii++)
-    {
-        let atChar = content[ii];
-        if (command === "" && atChar === " ")
-        {
-            command = buffer;
-        }
-        else if (atChar === "{")
-        {
-            buffer = "";
-        }
-        else if (atChar === "}")
-        {
-            args.push(buffer);
-            buffer = "";
-
-        }
-        else if (!(lastChar === "}" && atChar === " "))
-        {
-            buffer += atChar;
-        }
-        lastChar = atChar;
-    }
-    if (command === "")
-    {
-        command = buffer;
-    }
-
-    return { command: command, args: args };
-}
-
-function doCrCommand(cmd)
-{
-    let charName = cmd.args[0];
-    let toEdit = cmd.args[1];
-    let by = -1;
-
-    if (cmd.args.length > 2)
-    {
-        if (cmd.args[2] === "roll")
-        {
-            log("roll by : "+capturedLastRollTotal);
-            by = capturedLastRollTotal;
-        }
-        else{by = parseInt(cmd.args[2]);}
-    }
-
-    //log(charName);
-    //llog(toEdit);
-    let charId = getCharacterIdFromName(charName);
-    //class_resource
-    changeCharacterAttributeBy(charId,toEdit,by);
-}
-
-function changeCharacterAttributeBy(charId,atribStr,by)
-{
-    let atribs = filterObjs((obj) => obj.get("_type") === "attribute" && obj.get("_characterid") === charId && obj.get("name") === atribStr);
-    if (atribs.length > 0)
-    {
-        try{
-            let atrib = atribs[0];
-            //log(atrib);
-            let mx = parseInt(atrib.get("max"));
-            let cur = parseInt(atrib.get("current"))
-            let newVal = min(cur + by, mx);
-            atrib.set("current", newVal+"");
-        }
-        catch (ex)
-        {
-            sendChat("UtilityApi","Coudn't change attrib value!");
-        }
-    }
-
-}
-
-function getCharacterIdFromName(name)
-{
-    let chars = filterObjs((obj) => obj.get("_type") === "character" && obj.get("name") === name);
-    if (chars.length > 0)
-    {
-        return chars[0].get("_id");
-    }
-    else
-    {
-        return undefined;
-    }
-}
-
-function min(a,b)
-{
-    return a >= b ? b : a;
-}
-
 /***/ })
 
-/******/ },
-/******/ function(__webpack_require__) { // webpackRuntimeModules
-/******/ 	"use strict";
-/******/ 
-/******/ 	/* webpack/runtime/make namespace object */
-/******/ 	!function() {
-/******/ 		// define __esModule on exports
-/******/ 		__webpack_require__.r = function(exports) {
-/******/ 			if(typeof Symbol !== 'undefined' && Symbol.toStringTag) {
-/******/ 				Object.defineProperty(exports, Symbol.toStringTag, { value: 'Module' });
-/******/ 			}
-/******/ 			Object.defineProperty(exports, '__esModule', { value: true });
-/******/ 		};
-/******/ 	}();
-/******/ 	
-/******/ 	/* webpack/runtime/define property getter */
-/******/ 	!function() {
-/******/ 		// define getter function for harmony exports
-/******/ 		var hasOwnProperty = Object.prototype.hasOwnProperty;
-/******/ 		__webpack_require__.d = function(exports, name, getter) {
-/******/ 			if(!hasOwnProperty.call(exports, name)) {
-/******/ 				Object.defineProperty(exports, name, { enumerable: true, get: getter });
-/******/ 			}
-/******/ 		};
-/******/ 	}();
-/******/ 	
-/******/ }
-);
+/******/ });
 }).call(this,"/build")
 },{}]},{},[1]);
