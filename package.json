@@ -1,0 +1,16 @@
+{
+  "name": "dnd",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "dependencies": {
+    "@zeit/ncc": "^0.22.0"
+  },
+  "scripts": {
+    "buildnode": "ncc build ./src/index.ts --no-source-map-register -o build",
+    "build":"yarn buildnode && yarn browsify",
+    "browsify":"browserify build/index.js -o build/bundle.js",
+    "copy":"type \".\\build\\bundle.js\" | clip",
+    "make":"yarn build && yarn copy"
+  }
+}
