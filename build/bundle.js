@@ -399,6 +399,9 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const utility_1 = __webpack_require__(566);
 const assets_1 = __webpack_require__(363);
 const TAVERN_NAME = "Egészséges Kecske Kocsma";
+const SERVER_DC = 12;
+const GUARD_DC = 14;
+const INN_DC = 10;
 function handleTavernCommands(msg) {
     if (msg.content.startsWith("!")) {
         let cmd = utility_1.getMessageCommand(msg.content);
@@ -418,9 +421,107 @@ function handleTavernCommands(msg) {
         if (cmd.command === "!kocsma-vetel") {
             handleBuyingStock(cmd);
         }
+        if (cmd.command === "!kocsma-futtat") {
+            handleRunning(cmd);
+        }
+        if (cmd.command === "!kocsma-repu") {
+            changeTavernRepu(cmd);
+        }
     }
 }
 exports.handleTavernCommands = handleTavernCommands;
+function changeTavernRepu(cmd) {
+    log("repu ");
+    log(cmd);
+    if (cmd.args.length >= 1) {
+        let state = getTavernState();
+        let by = parseInt(cmd.args[0]);
+        let newState = Object.assign({}, state);
+        newState.reputation += by;
+        setTavernState(newState);
+        sendChat(TAVERN_NAME, "Reputáció frissítve!");
+    }
+}
+function handleRunning(cmd) {
+    let state = getTavernState();
+    let halfRep = (state.reputation / 2);
+    let min = state.reputation - halfRep;
+    let max = state.reputation + halfRep;
+    let people = getNormalizedRandom() * (max - min) + min;
+    let pplChecks = Math.floor(people / 10) + 1;
+    let repuMod = 0;
+    let failedServer = 0;
+    let failedGuard = 0;
+    let failedInn = 0;
+    for (let checkI = 0; checkI < pplChecks; checkI++) {
+        let server = randomInteger(20) + state.serverModifier >= SERVER_DC;
+        let guard = randomInteger(20) + state.guardModifier >= GUARD_DC;
+        let inn = randomInteger(20) + state.innkeeperModifier >= INN_DC;
+        if (server) {
+            repuMod += randomInteger(4);
+        }
+        else {
+            repuMod -= randomInteger(6);
+            failedServer++;
+        }
+        if (guard) {
+            repuMod += randomInteger(4);
+        }
+        else {
+            repuMod -= randomInteger(6);
+            failedGuard++;
+        }
+        if (inn) {
+            repuMod += randomInteger(6);
+        }
+        else {
+            repuMod -= randomInteger(8);
+            failedInn++;
+        }
+    }
+    let money = 0;
+    let newState = Object.assign({}, state);
+    newState.reputation = Math.max(1, newState.reputation + repuMod);
+    let drank = 0;
+    for (let ppI = 0; ppI < people; ppI++) {
+        let drink = getRandomDrinkThatsInStock(newState);
+        if (state.inv[drink] > 0) {
+            money += state.defs[drink].sellPrice;
+            newState.inv[drink]--;
+            drank++;
+        }
+    }
+    setTavernState(newState);
+    sendChat(TAVERN_NAME, `&{template:default} {{name=Kocsma}} {{Pénz keresve=${money} gp}} {{Emberek kiszolgálva=${drank} fő}} {{Chekkek=${pplChecks} db}} {{Kiszolgálói chekkek=${pplChecks - failedServer}/${pplChecks}}} {{Őr chekkek=${pplChecks - failedGuard}/${pplChecks}}} {{Kocsmáros csekkek=${pplChecks - failedInn}/${pplChecks}}} {{Új reputáció=${newState.reputation}}}`);
+    displayInventory();
+}
+function getNormalizedRandom() {
+    return (randomInteger(101) - 1) / 100.0;
+}
+function getRandomDrink(defs) {
+    let chance = getNormalizedRandom();
+    let at = 0;
+    for (let ii in defs) {
+        let nextMax = at + defs[ii].chance;
+        if (chance >= at && chance < nextMax) {
+            return ii;
+        }
+    }
+    return "shadow-ale";
+}
+function getRandomDrinkThatsInStock(state) {
+    let cc = 0;
+    while (true) {
+        let choosen = getRandomDrink(state.defs);
+        if (state.inv[choosen] !== 0) {
+            return choosen;
+        }
+        cc++;
+        if (cc >= 100) {
+            return "shadow-ale";
+        }
+    }
+}
 function handleBuyingStock(cmd) {
     if (cmd.args.length >= 3) {
         let who = cmd.args[0];

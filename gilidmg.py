@@ -1,4 +1,4 @@
-"""
+
 ac = 15
 eloszals = {}
 hitMod = 7
@@ -48,4 +48,4 @@ for kk in eloszlas.keys():
 
 print(varhato)
 print(math.sqrt(szorasNegyzet))
-#"""
+"""
